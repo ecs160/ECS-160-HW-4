@@ -85,7 +85,7 @@ const int getNameIndex(char* line) {
 // }
 
 // gets specific item in given row, given the column index
-const char* getfield(char* row, int col_index) {
+const char* getField(char* row, int col_index) {
   const char* token = strsep(&row, ",");
   
   while(col_index != 0 || (token && *token)) {
@@ -171,7 +171,7 @@ int main(int argc, const char *argv[]) {
   printf("%d\n", nameIndex);
   
   while(fgets(line, MAX_CHAR, file)) {
-    printf("Name: %s\n", getfield(line, nameIndex));
+    printf("Name: %s\n", getField(line, nameIndex));
   }
   
   // Part 3 - Get Unique Names
