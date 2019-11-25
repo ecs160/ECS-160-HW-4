@@ -26,35 +26,14 @@ const bool fileExists(const char *fileName) {
   return(access(fileName, F_OK ) == 0);
 }
 
-// returns index of "name" in line
-// POSSIBLE ERROR: WITH STRTOK AGAIN IF THERE IS BLANK IN BETWEEN HEADERS
-// const int OLDgetNameIndex(char* line) {
-//     int nameIndex = -1;     // use -1 to denote that name has not been found yet
-//     int curIndex = 0;       // keep track of which line field we are at
-//
-//     char* token = strtok(line, ",");
-//     while(token) {
-//         printf("%s\n", token);
-//         if(strcmp(token, "name") == 0){
-//             if(nameIndex == -1) {   // this means "name" has never been seen
-//                 nameIndex = curIndex;
-//             } else {
-//                 return -1;          // otherwise we saw multiple so return
-//             }
-//         }
-//         curIndex++;
-//         token = strtok(NULL, ","); // NULL as first arg means keep searching cur string
-//     }
-//     return nameIndex;
-// }
-
+// get index of "name" column
 const int getNameIndex(char* line) {
   int nameIndex = -1;     // use -1 to denote that name has not been found
   int curIndex = 0;       // keep track of which column we are at
   
-  char* token = strsep(&line, ",");
+  // delimiters also need \r or \n in case name is at the last column
+  char* token = strsep(&line, ",\n\r");
   while(token) {
-    printf("%s\n", token);
     if(strcmp(token, "name") == 0){
       if(nameIndex == -1) {   // this means "name" has never been seen
         nameIndex = curIndex;
@@ -63,26 +42,11 @@ const int getNameIndex(char* line) {
       }
     }
     curIndex++;
-    token = strsep(&line, ","); // NULL as first arg means keep searching cur string
+    token = strsep(&line, ",\n\r");
   }
+  printf("name ind: %d\n", nameIndex);
   return nameIndex;
 }
-
-// gets specific item in given row, given the column index
-// const char* OLDgetfield(char* row, int col_index) {
-//     const char* tok;
-//     for (tok = strtok(row, ",");
-//         tok && *tok;
-//         tok = strtok(NULL, ",\n")) {
-//       printf("before colindex: %d\n",col_index);
-//             if (!--col_index) {
-//         printf("after colindex: %d\n",col_index);
-//         return tok;
-//       }
-//
-//     }
-//     return NULL;
-// }
 
 // gets specific item in given row, given the column index
 const char* getField(char* row, int col_index) {
@@ -149,11 +113,11 @@ int main(int argc, const char *argv[]) {
   // on successful fgets, the string is terminated with newline
   // if no newline, means buffer size exceeded
   if(line[strlen(line) - 1] != '\n') {
-    printf("Overflow detection!!!!!!");
+    printf("Overflow detection!!!!!!\n");
     return errorMsg();
   }
   
-  printf("%s\n", line);
+  printf("156: %s\n", line);
   
   // char test1[] = "lulu,sean,,poo,prem";
   // char test2[] = "bea,,name";  // space messeses indexing so need strsep instead strtok
