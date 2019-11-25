@@ -86,14 +86,15 @@ const int getNameIndex(char* line) {
 
 // gets specific item in given row, given the column index
 const char* getfield(char* row, int col_index) {
-  const char* tok = strsep(&row, ",");
+  const char* token = strsep(&row, ",");
   
-  while(col_index != 0 || (tok && *tok)) {
-    if (!col_index) {    // found the correct column
-      return tok;
+  while(col_index != 0 || (token && *token)) {
+    if (!col_index) {    // we found the correct column if index == 0
+      return token;
     }
+    // keep going/decrement since we aren't in correct column
     col_index--;
-    tok = strsep(&row, ",\n");
+    token = strsep(&row, ",");  // get next token
   }
   return NULL;
 }
@@ -158,6 +159,9 @@ int main(int argc, const char *argv[]) {
   // char test2[] = "bea,,name";  // space messeses indexing so need strsep instead strtok
   // char test3[] = "name,,name";
   // char test4[] = "lulu,sean,poo,prem";
+  // char test5[] = "";
+  // char test6[] = ",";
+  // char test7[] = "name,";
   
   nameIndex = getNameIndex(line);
   if(nameIndex == -1) {
