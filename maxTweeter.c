@@ -7,6 +7,54 @@
 #define ERROR_MESSAGE "Invalid Input Format\n"
 #define MAX_CHAR 1024
 
+typedef struct node{
+    char* name;
+    int occurances;
+    struct node* next;
+} node_t;
+
+void print_list(node_t * head) {
+    node_t * current = head;
+
+    while (current != NULL) {
+        printf("%s has an occurance of: %d\n", current->name, current->occurances);
+        current = current->next;
+    }
+}
+
+void init_head(node_t * head, const char* name){
+    // node_t * current = head;
+    head->name = malloc(sizeof(char) * strlen(name));
+    strcpy(head->name, name);
+    head->occurances = 1;
+    head->next = NULL;
+}
+
+const void push(node_t * head, const char* name) {
+    node_t * current = head;
+    while (current != NULL) {
+        //if name exists already
+        // printf("cur name: %s | compared to name: %s\n", current->name, name);
+        if(strcmp(current->name, name) == 0){
+            //increment the number of occurances
+            // printf("match: %d!\n", current->occurances + 1);
+            current->occurances = current->occurances + 1;
+            return;
+        }
+        if(current->next == NULL)
+            break;
+        current = current->next;
+    }
+    
+    /* now we can add a new variable */
+    // printf("creating new node: %s\n", name);
+    current->next = malloc(sizeof(node_t));
+    current->next->name = malloc(sizeof(char) * strlen(name));
+    strcpy(current->next->name, name);
+    current->next->occurances = 1;
+    current->next->next = NULL;
+}
+
 int errorMsg() {
   printf("%s", ERROR_MESSAGE);
   return 1;
@@ -54,6 +102,7 @@ const char* getField(char* row, int col_index) {
   
   while(col_index != 0 || (token && *token)) {
     if (!col_index) {    // we found the correct column if index == 0
+      printf("reading in %s\n", token);
       return token;
     }
     // keep going/decrement since we aren't in correct column
@@ -117,7 +166,7 @@ int main(int argc, const char *argv[]) {
     return errorMsg();
   }
   
-  printf("156: %s\n", line);
+  // printf("156: %s\n", line);
   
   // char test1[] = "lulu,sean,,poo,prem";
   // char test2[] = "bea,,name";  // space messeses indexing so need strsep instead strtok
@@ -132,18 +181,36 @@ int main(int argc, const char *argv[]) {
     return errorMsg();
   }
   
-  printf("%d\n", nameIndex);
-  
-  while(fgets(line, MAX_CHAR, file)) {
-    printf("Name: %s\n", getField(line, nameIndex));
-  }
+  // printf("%d\n", nameIndex);
   
   // Part 3 - Get Unique Names
   // loop through entire file to collect number of names
+  // while(fgets(line, MAX_CHAR, file)) {
+    // printf("Name: %s\n", getField(line, nameIndex));
+  // }
   
   // Part 4 - Create Hashtable
   // store names in hashtable
   // another loop to insert the names in hashtable
+    bool init = true;
+    node_t * head = NULL;
+    head = malloc(sizeof(node_t));
+    if (head == NULL) {
+        return errorMsg();
+    }
+    
+    while(fgets(line, MAX_CHAR, file)) {
+        if(init){
+            printf("initialiazing the head\n");
+            init_head(head, getField(line, nameIndex));
+            init = false;
+        }else{
+            push(head, getField(line, nameIndex));
+        }
+        // printf("Name: %s\n", getField(line, nameIndex));
+    }
+    
+    print_list(head);
   
   free(fileName);
   
