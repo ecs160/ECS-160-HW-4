@@ -22,14 +22,6 @@ void print_list(node_t * head) {
     }
 }
 
-void init_head(node_t * head, const char* name){
-    // node_t * current = head;
-    head->name = malloc(sizeof(char) * strlen(name));
-    strcpy(head->name, name);
-    head->occurances = 1;
-    head->next = NULL;
-}
-
 const void push(node_t * head, const char* name) {
     node_t * current = head;
     while (current != NULL) {
@@ -53,6 +45,79 @@ const void push(node_t * head, const char* name) {
     strcpy(current->next->name, name);
     current->next->occurances = 1;
     current->next->next = NULL;
+}
+
+void init_head(node_t * head, const char* name){
+    // node_t * current = head;
+    head->name = malloc(sizeof(char) * strlen(name));
+    strcpy(head->name, name);
+    head->occurances = 1;
+    head->next = NULL;
+}
+
+int pop(node_t ** head) {
+    int retval = -1;
+    node_t * next_node = NULL;
+
+    if (*head == NULL) {
+        return -1;
+    }
+
+    next_node = (*head)->next;
+    retval = (*head)->occurances;
+    free(*head);
+    *head = next_node;
+
+    return retval;
+}
+
+int remove_by_index(node_t ** head, int n) {
+    int i = 0;
+    int retval = -1;
+    node_t * current = *head;
+    node_t * temp_node = NULL;
+
+    if (n == 0) {
+        return pop(head);
+    }
+
+    for (i = 0; i < n-1; i++) {
+        if (current->next == NULL) {
+            return -1;
+        }
+        current = current->next;
+    }
+
+    temp_node = current->next;
+    retval = temp_node->occurances;
+    current->next = temp_node->next;
+    free(temp_node);
+
+    return retval;
+
+}
+
+void getLargestOccurance(node_t * head){
+    node_t * current = head;
+    int cur_i = 0;
+    int max = 0;
+    int max_i = 0;
+
+    while (current != NULL) {
+        // printf("%s has an occurance of: %d\n", current->name, current->occurances);
+        if(current->occurances > max){
+            max = current->occurances;
+            max_i = cur_i;
+        }
+        cur_i++;
+        current = current->next;
+    }
+    
+    printf("big boi is at index: %d with occurance of %d\n", max_i, max);
+    printf("removing big boi from linked list.....\n");
+    remove_by_index(&head, max_i);
+    printf("---removal complete\n");
+    print_list(head);
 }
 
 int errorMsg() {
@@ -102,7 +167,7 @@ const char* getField(char* row, int col_index) {
   
   while(col_index != 0 || (token && *token)) {
     if (!col_index) {    // we found the correct column if index == 0
-      printf("reading in %s\n", token);
+      // printf("reading in %s\n", token);
       return token;
     }
     // keep going/decrement since we aren't in correct column
@@ -201,7 +266,7 @@ int main(int argc, const char *argv[]) {
     
     while(fgets(line, MAX_CHAR, file)) {
         if(init){
-            printf("initialiazing the head\n");
+            // printf("initialiazing the head\n");
             init_head(head, getField(line, nameIndex));
             init = false;
         }else{
@@ -211,7 +276,8 @@ int main(int argc, const char *argv[]) {
     }
     
     print_list(head);
-  
+    getLargestOccurance(head);
+    
   free(fileName);
   
   return 0;
