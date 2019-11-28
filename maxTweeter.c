@@ -9,7 +9,7 @@
 
 typedef struct node{
     char* name;
-    int occurances;
+    int occurrences;
     struct node* next;
 } node_t;
 
@@ -17,7 +17,7 @@ void print_list(node_t * head) {
     node_t * current = head;
 
     while (current != NULL) {
-        printf("%s has an occurance of: %d\n", current->name, current->occurances);
+        printf("%s has an occurrence of: %d\n", current->name, current->occurrences);
         current = current->next;
     }
 }
@@ -28,9 +28,9 @@ void push(node_t * head, const char* name) {
         //if name exists already
         // printf("cur name: %s | compared to name: %s\n", current->name, name);
         if(strcmp(current->name, name) == 0){
-            //increment the number of occurances
-            // printf("match: %d!\n", current->occurances + 1);
-            current->occurances = current->occurances + 1;
+            //increment the number of occurrences
+            // printf("match: %d!\n", current->occurrences + 1);
+            current->occurrences = current->occurrences + 1;
             return;
         }
         if(current->next == NULL)
@@ -52,7 +52,7 @@ void push(node_t * head, const char* name) {
     }
 
     strcpy(current->next->name, name);
-    current->next->occurances = 1;
+    current->next->occurrences = 1;
     current->next->next = NULL;
 }
 
@@ -62,11 +62,10 @@ void init_head(node_t * head, const char* name){
     if(!head->name) {
         printf("%s", ERROR_MESSAGE);
         return;
-
     }
 
     strcpy(head->name, name);
-    head->occurances = 1;
+    head->occurrences = 1;
     head->next = NULL;
 }
 
@@ -79,7 +78,7 @@ int pop(node_t ** head) {
     }
 
     next_node = (*head)->next;
-    retval = (*head)->occurances;
+    retval = (*head)->occurrences;
     free(*head);
     *head = next_node;
 
@@ -104,7 +103,7 @@ int remove_by_index(node_t ** head, int n) {
     }
 
     temp_node = current->next;
-    retval = temp_node->occurances;
+    retval = temp_node->occurrences;
     current->next = temp_node->next;
     free(temp_node);
 
@@ -112,23 +111,30 @@ int remove_by_index(node_t ** head, int n) {
 
 }
 
-void getLargestOccurance(node_t * head){
+void getLargestOccurrence(node_t * head){
     node_t * current = head;
     int cur_i = 0;
     int max = 0;
     int max_i = 0;
+    char *name;
 
     while (current != NULL) {
-        // printf("%s has an occurance of: %d\n", current->name, current->occurances);
-        if(current->occurances > max){
-            max = current->occurances;
+        // printf("%s has an occurrence of: %d\n", current->name, current->occurrences);
+        if(current->occurrences > max){
+            max = current->occurrences;
             max_i = cur_i;
+            name = (char*) malloc(sizeof(char) * strlen(current->name));
+            if(!name) {
+                printf("%s", ERROR_MESSAGE);
+                return;
+            }
+            name = current->name;
         }
         cur_i++;
         current = current->next;
     }
 
-    printf("big boi is at index: %d with occurance of %d\n", max_i, max);
+    printf("big boi named: %s is at index: %d with occurrence of %d\n", name, max_i, max);
     printf("removing big boi from linked list.....\n");
     remove_by_index(&head, max_i);
     printf("---removal complete\n");
@@ -287,7 +293,7 @@ int main(int argc, const char *argv[]) {
     }
 
     print_list(head);
-    getLargestOccurance(head);
+    getLargestOccurrence(head);
 
     free(fileName);
 
