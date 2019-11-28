@@ -70,6 +70,7 @@ void init_head(node_t * head, const char* name){
 }
 
 int pop(node_t ** head) {
+    printf("!!!! in POP \n");
     int retval = -1;
     node_t * next_node = NULL;
 
@@ -77,21 +78,29 @@ int pop(node_t ** head) {
         return -1;
     }
 
+
     next_node = (*head)->next;
+    printf("!!!! pop 11111 !!!! \n");
     retval = (*head)->occurrences;
+    printf("!!!! pop 22222 !!!! \n");
     free(*head);
+    printf("!!!! pop 3333 !!!! \n");
     *head = next_node;
+    printf("!!!! pop 44444 !!!! \n");
+
 
     return retval;
 }
 
 int remove_by_index(node_t ** head, int n) {
+    printf("!!!! in removed by index\n");
     int i = 0;
     int retval = -1;
     node_t * current = *head;
     node_t * temp_node = NULL;
 
     if (n == 0) {
+        printf("!!!! in removed by index N==0 !!!!!!!!\n");
         return pop(head);
     }
 
@@ -111,34 +120,38 @@ int remove_by_index(node_t ** head, int n) {
 
 }
 
-void getLargestOccurrence(node_t * head){
-    node_t * current = head;
+void getLargestOccurrence(node_t ** head){
+    node_t * current = *head;
     int cur_i = 0;
     int max = 0;
     int max_i = 0;
-    char *name;
+    char *max_name;
 
     while (current != NULL) {
         // printf("%s has an occurrence of: %d\n", current->name, current->occurrences);
         if(current->occurrences > max){
             max = current->occurrences;
             max_i = cur_i;
-            name = (char*) malloc(sizeof(char) * strlen(current->name));
-            if(!name) {
+            max_name = (char*) malloc(sizeof(char) * strlen(current->name));
+
+            printf("(current name:%s)\n", current->name);
+
+            if(!max_name) {
                 printf("%s", ERROR_MESSAGE);
                 return;
             }
-            name = current->name;
+
+            max_name = current->name;
         }
         cur_i++;
         current = current->next;
     }
 
-    printf("big boi named: %s is at index: %d with occurrence of %d\n", name, max_i, max);
+    printf("big boi named: %s is at index: %d with occurrence of %d\n", max_name, max_i, max);
     printf("removing big boi from linked list.....\n");
-    remove_by_index(&head, max_i);
+    remove_by_index(head, max_i);
     printf("---removal complete\n");
-    print_list(head);
+    print_list(*head);
 }
 int errorMsg() {
     printf("%s", ERROR_MESSAGE);
@@ -293,7 +306,10 @@ int main(int argc, const char *argv[]) {
     }
 
     print_list(head);
-    getLargestOccurrence(head);
+
+    for(int i = 0; i < 10 && head; ++i) {
+        getLargestOccurrence(&head);
+    }
 
     free(fileName);
 
