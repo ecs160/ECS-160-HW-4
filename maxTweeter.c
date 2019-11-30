@@ -17,7 +17,7 @@ typedef struct node{
 // =================== HEADER STRUCT =======================
 typedef struct header{
     char* headerName;   // name of the header field
-    bool quoted;        // if header is quoted or not
+    bool isQuoted;      // if header is quoted or not
 } header_t;
 
 
@@ -31,9 +31,12 @@ int errorMsg() {
 // checks that file extension is csv
 const bool isCSV(const char *fileName) {
     const char *dot = strrchr(fileName, '.');
-    if(!dot || dot == fileName) return "";
-        // POSSIBLE TODO: case sensitive checking of extension name
-        return strcmp(dot + 1, "csv") == 0;
+    // dot == fileName in the case that it is curr dir "."
+    if(!dot || dot == fileName) {
+        return false;
+    }
+    // POSSIBLE TODO: case sensitive checking of extension name
+    return (strcmp(dot + 1, "csv") == 0 || strcmp(dot + 1, "CSV") == 0);
 }
 
 // checks that file exists given filepath/name
@@ -53,8 +56,8 @@ void trimLine(char* line) {
 }
 
 // returns index of 'input' string in the 'headers' array
-int findStringPos(header_t headers[], int headerIndex, char *input) {
-    for(int i = 0; i < headerIndex; ++i) {
+int findStringPos(header_t headers[], int headerCount, char *input) {
+    for(int i = 0; i < headerCount; ++i) {
         if(strcmp(headers[i].headerName, input) == 0) {
             return i;
         }
@@ -63,53 +66,83 @@ int findStringPos(header_t headers[], int headerIndex, char *input) {
 }
 
 // adds an input to end of a array (used for checking duplicates in header)
-int addHeader(header_t headers[], int *headerIndex, char *input) {
-    headers[*headerIndex].headerName = (char*) malloc(sizeof(char) * (strlen(input) + 1));
+int addHeader(header_t headers[], int *headerCount, char *input) {
+    // strlen + 1 to account for null terminator
+    headers[*headerCount].headerName = (char*) malloc(sizeof(char) * (strlen(input) + 1));
 
-    strcpy(headers[*headerIndex].headerName, input);
-    *headerIndex += 1;
+    strcpy(headers[*headerCount].headerName, input);
+    *headerCount += 1;
 
-    return *headerIndex;
+    return *headerCount;
 }
 
 // parses a field to get rid of outside quotes if any
-char *parsedField(char* field, char* buffer) {
+char *parsedField(char* field, char* buffer, header_t headers[], int headerCount) {
     if(field[0] == '"') {
         if(field[strlen(field) - 1] == '"') {
             strncpy(buffer, field + 1, strlen(field) - 2);
+            // POSSIBLE DELETE IF STATMENT OUT IF NOT CHECKING OTHER COLUMNS
+            if((strlen(field) - 2) > 0) {
+                headers[headerCount].isQuoted = true;
+            }
             return buffer;
         } else {
             return NULL;       // invalid quotes
         }
     }
     strcpy(buffer, field);
+    headers[headerCount].isQuoted = false;
     return buffer;
 }
 
-// get index of "name" column and checks there are no duplicates items in header
-const int getNameIndex(char* line, header_t headers[], int *headerIndex) {
+// checks that all header items have uniform quote type
+bool hasUniformQuotes(header_t headers[], int headerCount) {
+    const bool firstItem = headers[0].isQuoted;
+
+    for (int i = 1; i < headerCount; i++)  {
+        if (headers[i].isQuoted != firstItem) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// validate header (checks no duplicates items/valid quotes) and get index of "name"
+const int valAndGetNameIndex(char* line, header_t headers[], int *headerCount) {
     int nameIndex = -1;     // use -1 to denote that name has not been found
     char buffer[MAX_CHAR];
 
     char* token = strsep(&line, ",");
     while(token) {
+        printf("TOKEN:[%s]\n", token);
          // parse a string to remove outer quotes if any
-        char *noQuotes = parsedField(token, buffer);
-
+        char *noQuotes = parsedField(token, buffer, headers, *headerCount);
+        if(noQuotes == NULL) {
+            printf("invalid quote parse\n");
+            return -1;   // null if invalid quote parse
+        }
         // find position of token in headers array
-        int pos = findStringPos(headers, *headerIndex, token);
-        if(pos == -1) {     // did not find the token so add it to headers array at headerIndex
-            addHeader(headers, headerIndex, token);
+        int pos = findStringPos(headers, *headerCount, token);
+        // create array of headers
+        if(pos == -1) {     // did not find the token so add it to headers[headerCount]
+            addHeader(headers, headerCount, token);
         } else {
             printf("findStringDup token:[%s]\n", token);    // otherwise we found a duplicate item
             return -1;
         }
          // if we're here means there were no duplicates of any found and name just showed up
         if(strcmp(token, "name") == 0){
-            nameIndex = *headerIndex - 1;   // -1 since 0 based
+            nameIndex = *headerCount - 1;   // -1 since 0 based
         }
         token = strsep(&line, ","); // get next token
     }
+
+    // now we need to check if all headers are quoted or unquoted
+    if(!hasUniformQuotes(headers, *headerCount)) {
+        printf("no uniform quotes!\n");
+        return -1;      // mismatch
+    }
+
     printf("name ind: %d\n", nameIndex);
     return nameIndex;
 }
@@ -130,6 +163,7 @@ const char* getField(char* row, int col_index) {
     return NULL;
 }
 
+// ======================= LINKED LIST FUNCTIONS =======================
 // prints out our entire linked list
 void print_list(node_t * head) {
     node_t * current = head;
@@ -270,7 +304,7 @@ int main(int argc, const char *argv[]) {
     char line[MAX_CHAR];   // line with max_char size
     int nameIndex;          // index of "name" line field
     header_t headers[MAX_CHAR];
-    int headerIndex = 0;
+    int headerCount = 0;
 
     // Part 1 - Getting the File
     // get the file from command line
@@ -325,8 +359,14 @@ int main(int argc, const char *argv[]) {
     // char test6[] = ",";
     // char test7[] = "name,";
 
+    // for safety, intialize members in headers struct
+    for(int i = 0; i < MAX_CHAR; ++i) {
+        headers[i].headerName = NULL;
+        headers[i].isQuoted = false;
+    }
+
     trimLine(line);
-    nameIndex = getNameIndex(line, headers, &headerIndex);
+    nameIndex = valAndGetNameIndex(line, headers, &headerCount);
     if(nameIndex == -1) {
         return errorMsg();
     }
