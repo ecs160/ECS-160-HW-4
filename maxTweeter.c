@@ -108,6 +108,28 @@ bool hasUniformQuotes(header_t headers[], int headerCount) {
     return true;
 }
 
+// count that there are matching quotes in a given string
+bool hasMatchingQuotes(char* string) {
+    int front = 0;
+    int end = strlen(string) - 1;
+    int frontQuoteCount = 0;
+    int backQuoteCount = 0;
+
+    while(front <= end) {
+         printf("stringfront: %c\n", string[front]);
+        if(string[front] == '"') {
+            frontQuoteCount++;
+        }
+        front++;
+        printf("stringend: %c\n", string[end]);
+        if(string[end] == '"') {
+            backQuoteCount++;
+        }
+        --end;
+    }
+    return frontQuoteCount == backQuoteCount;
+}
+
 // validate header (checks no duplicates items/valid quotes) and get index of "name"
 const int valAndGetNameIndex(char* line, header_t headers[], int *headerCount) {
     int nameIndex = -1;     // use -1 to denote that name has not been found
@@ -121,6 +143,10 @@ const int valAndGetNameIndex(char* line, header_t headers[], int *headerCount) {
         if(noQuotes == NULL) {
             printf("invalid quote parse\n");
             return -1;   // null if invalid quote parse
+        }
+        // also check that after removing outer quotes, other quotes inside valid
+        if(!hasMatchingQuotes(noQuotes)) {
+            return -1;
         }
         // find position of token in headers array
         int pos = findStringPos(headers, *headerCount, token);
@@ -304,9 +330,12 @@ void getLargestOccurrence(node_t ** head){
 int main(int argc, const char *argv[]) {
     char line[MAX_CHAR];   // line with max_char size
     int nameIndex;          // index of "name" line field
-    header_t headers[MAX_CHAR];
-    int headerCount = 0;
-    int fileLineCount = 0;
+    header_t headers[MAX_CHAR]; // holds the header type (name and if quoted)
+    int headerCount = 0;    // total header items
+    int fileLineCount = 0;  // total lines in file
+    bool isQuote = false;
+    bool init = true;
+    node_t * head = NULL;
 
     // Part 1 - Getting the File
     // get the file from command line
@@ -369,11 +398,16 @@ int main(int argc, const char *argv[]) {
         headers[i].isQuoted = false;
     }
 
+    //
     trimLine(line);
     nameIndex = valAndGetNameIndex(line, headers, &headerCount);
     if(nameIndex == -1) {
         return errorMsg();
     }
+
+    // if we're here means everything is validated and uniform header hasUniformQuotes
+    // just set this var as first item in headers if quoted
+    isQuote = headers[0].isQuoted;
 
     // printf("%d\n", nameIndex);
 
@@ -386,15 +420,16 @@ int main(int argc, const char *argv[]) {
     // Part 4 - Create Hashtable
     // store names in hashtable
     // another loop to insert the names in hashtable
-    bool init = true;
-    node_t * head = NULL;
     head = malloc(sizeof(node_t));
     if (!head)
         return errorMsg();
 
     line[MAX_CHAR - 1] = '\0';     // set last char of buffer to null character
 
-    // check if valid header but no content
+
+
+    // TODO: need to check each nameIndex item is quoted or not
+    // check if valid header but no content (considered valid)
     if(!fgets(line, MAX_CHAR, file)) {
         printf("valid header but no content\n");
         return 0;
