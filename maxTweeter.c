@@ -6,6 +6,7 @@
 
 #define ERROR_MESSAGE "Invalid Input Format\n"
 #define MAX_CHAR 1024
+#define MAX_LINES 20000
 
 // =================== LINKED LIST STRUCT =======================
 typedef struct node{
@@ -305,6 +306,7 @@ int main(int argc, const char *argv[]) {
     int nameIndex;          // index of "name" line field
     header_t headers[MAX_CHAR];
     int headerCount = 0;
+    int fileLineCount = 0;
 
     // Part 1 - Getting the File
     // get the file from command line
@@ -340,6 +342,8 @@ int main(int argc, const char *argv[]) {
         printf("!!!!!!WE ARE IN EMPTY FILE!!!!\n");
         return errorMsg();
     }
+
+    fileLineCount++;
 
     // on successful fgets, the string is terminated with newline
     // if no newline, means buffer size exceeded
@@ -389,7 +393,34 @@ int main(int argc, const char *argv[]) {
         return errorMsg();
 
     line[MAX_CHAR - 1] = '\0';     // set last char of buffer to null character
+
+    // check if valid header but no content
+    if(!fgets(line, MAX_CHAR, file)) {
+        printf("valid header but no content\n");
+        return 0;
+    } else {    // do this once since fgets already got a line. it will be overwritten if called again
+        // must check for buffer overflow (can tell if null char got overwritten)
+        fileLineCount++;
+        if(line[MAX_CHAR - 1] != '\0') {
+            printf("second overflow!!!!!!!\n");
+            printf("Overflow detection!!!!!!\n");
+            return errorMsg();
+        }
+        trimLine(line);
+        if(init) {
+            // printf("initialiazing the head\n");
+            init_head(head, getField(line, nameIndex));
+            init = false;
+        }else {
+            push(head, getField(line, nameIndex));
+        }
+    }
+
     while(fgets(line, MAX_CHAR, file)) {
+        fileLineCount++;
+        if(fileLineCount > MAX_LINES) {  // make filed doesn't exceed MAX_LINES
+            return errorMsg();
+        }
         // must check for buffer overflow (can tell if null char got overwritten)
         if(line[MAX_CHAR - 1] != '\0') {
             printf("second overflow!!!!!!!\n");
@@ -407,12 +438,12 @@ int main(int argc, const char *argv[]) {
         // printf("Name: %s\n", getField(line, nameIndex));
     }
 
-    // print_list(head);
-
     // gets top 10 largest or as many nodes as possible from linked list
     for(int i = 0; i < 10 && head; ++i) {
         getLargestOccurrence(&head);
     }
+
+    printf("linecount total:%d\n",fileLineCount);
 
     return 0;
 }
