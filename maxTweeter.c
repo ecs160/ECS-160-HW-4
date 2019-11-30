@@ -7,133 +7,372 @@
 #define ERROR_MESSAGE "Invalid Input Format\n"
 #define MAX_CHAR 1024
 
+// =================== LINKED LIST STRUCT =======================
+typedef struct node{
+    char* name;         // name of tweeter
+    int occurrences;    // tweeter count
+    struct node* next;  // next node
+} node_t;
+
+// =================== HEADER STRUCT =======================
+typedef struct header{
+    char* headerName;   // name of the header field
+    bool quoted;        // if header is quoted or not
+} header_t;
+
+
+// ====================== FUNCTIONS ======================
+// prints out invalid input error message
 int errorMsg() {
-  printf("%s", ERROR_MESSAGE);
-  return 1;
+    printf("%s", ERROR_MESSAGE);
+    return -1;
 }
 
 // checks that file extension is csv
 const bool isCSV(const char *fileName) {
-  const char *dot = strrchr(fileName, '.');
-  if(!dot || dot == fileName) return "";
-  
-  // POSSIBLE TODO: case sensitive checking of extension name
-  return strcmp(dot + 1, "csv") == 0;
+    const char *dot = strrchr(fileName, '.');
+    if(!dot || dot == fileName) return "";
+        // POSSIBLE TODO: case sensitive checking of extension name
+        return strcmp(dot + 1, "csv") == 0;
 }
 
-// checks that file exists
+// checks that file exists given filepath/name
 const bool fileExists(const char *fileName) {
-  return(access(fileName, F_OK ) == 0);
+    return(access(fileName, F_OK ) == 0);
+}
+
+// trims newline from fgets input and adds null character to the end
+void trimLine(char* line) {
+    if(line == NULL || strlen(line) == 0) {
+        return;
+    }
+    printf("cur line in trim[%s]\n", line);
+    while(line[strlen(line) - 1] == '\n' || line[strlen(line) - 1] == '\r') {
+        line[strlen(line) - 1] = '\0';
+    }
+}
+
+// returns index of 'input' string in the 'headers' array
+int findStringPos(header_t headers[], int headerIndex, char *input) {
+    for(int i = 0; i < headerIndex; ++i) {
+        if(strcmp(headers[i].headerName, input) == 0) {
+            return i;
+        }
+    }
+    return -1;  // -1 means not found
+}
+
+// adds an input to end of a array (used for checking duplicates in header)
+int addHeader(header_t headers[], int *headerIndex, char *input) {
+    headers[*headerIndex].headerName = (char*) malloc(sizeof(char) * (strlen(input) + 1));
+
+    strcpy(headers[*headerIndex].headerName, input);
+    *headerIndex += 1;
+
+    return *headerIndex;
+}
+
+// parses a field to get rid of outside quotes if any
+char *parsedField(char* field, char* buffer) {
+    if(field[0] == '"') {
+        if(field[strlen(field) - 1] == '"') {
+            strncpy(buffer, field + 1, strlen(field) - 2);
+            return buffer;
+        } else {
+            return NULL;       // invalid quotes
+        }
+    }
+    strcpy(buffer, field);
+    return buffer;
+}
+
+// get index of "name" column and checks there are no duplicates items in header
+const int getNameIndex(char* line, header_t headers[], int *headerIndex) {
+    int nameIndex = -1;     // use -1 to denote that name has not been found
+    char buffer[MAX_CHAR];
+
+    char* token = strsep(&line, ",");
+    while(token) {
+         // parse a string to remove outer quotes if any
+        char *noQuotes = parsedField(token, buffer);
+
+        // find position of token in headers array
+        int pos = findStringPos(headers, *headerIndex, token);
+        if(pos == -1) {     // did not find the token so add it to headers array at headerIndex
+            addHeader(headers, headerIndex, token);
+        } else {
+            printf("findStringDup token:[%s]\n", token);    // otherwise we found a duplicate item
+            return -1;
+        }
+         // if we're here means there were no duplicates of any found and name just showed up
+        if(strcmp(token, "name") == 0){
+            nameIndex = *headerIndex - 1;   // -1 since 0 based
+        }
+        token = strsep(&line, ","); // get next token
+    }
+    printf("name ind: %d\n", nameIndex);
+    return nameIndex;
 }
 
 // gets specific item in given row, given the column index
-const char* getfield(char* row, int col_index) {
-  const char* tok;
-  for (tok = strtok(row, ",");
-       tok && *tok;
-       tok = strtok(NULL, ",\n")) {
-    if (!--col_index)
-      return tok;
-  }
-  return NULL;
-}
+const char* getField(char* row, int col_index) {
+    const char* token = strsep(&row, ",");
 
-// returns index of "name" in line
-const int getNameIndex(char* line) {
-  int nameIndex = -1;     // use -1 to denote that name has not been found yet
-  int curIndex = 0;       // keep track of which line field we are at
-  
-  char* token = strtok(line, ",");
-  while(token) {
-    printf("%s\n", token);
-    if(strcmp(token, "name") == 0){
-      if(nameIndex == -1) {   // this means "name" has never been seen
-        nameIndex = curIndex;
-      } else {
-        return -1;          // otherwise we saw multiple so return
-      }
+    while(col_index != 0 || (token && *token)) {
+        if (!col_index) {    // we found the correct column if index == 0
+            // printf("reading in %s\n", token);
+            return token;
+        }
+        // keep going/decrement since we aren't in correct column
+        col_index--;
+        token = strsep(&row, ",");  // get next token
     }
-    curIndex++;
-    token = strtok(NULL, ","); // NULL as first arg means keep searching cur string
-  }
-  return nameIndex;
+    return NULL;
 }
 
+// prints out our entire linked list
+void print_list(node_t * head) {
+    node_t * current = head;
+
+    while (current != NULL) {
+        printf("%s has an occurrence of: %d\n", current->name, current->occurrences);
+        current = current->next;
+    }
+}
+
+// push a new linked list node in current linked list
+void push(node_t * head, const char* name) {
+    node_t * current = head;
+    while (current != NULL) {
+        //if name exists already
+        // printf("cur name: %s | compared to name: %s\n", current->name, name);
+        if(strcmp(current->name, name) == 0){
+            //increment the number of occurrences
+            // printf("match: %d!\n", current->occurrences + 1);
+            current->occurrences = current->occurrences + 1;
+            return;
+        }
+        if(current->next == NULL)
+            break;
+        current = current->next;
+    }
+
+    /* now we can add a new variable */
+    // printf("creating new node: %s\n", name);
+    current->next = malloc(sizeof(node_t));
+    if(!current->next){
+        printf("%s", ERROR_MESSAGE);
+        return;
+    }
+    current->next->name = malloc(sizeof(char) * (strlen(name) + 1));
+    if(!current->next->name) {
+        printf("%s", ERROR_MESSAGE);
+        return;
+    }
+
+    strcpy(current->next->name, name);
+    current->next->occurrences = 1;
+    current->next->next = NULL;
+}
+
+// used to initialize linked list head
+void init_head(node_t * head, const char* name){
+    // node_t * current = head;
+    head->name = malloc(sizeof(char) * (strlen(name) + 1));
+    if(!head->name) {
+        printf("%s", ERROR_MESSAGE);
+        return;
+    }
+
+    strcpy(head->name, name);
+    head->occurrences = 1;
+    head->next = NULL;
+}
+
+// removes the head of linked list
+int pop(node_t ** head) {
+    int retval = -1;
+    node_t * next_node = NULL;
+
+    if (*head == NULL) {
+        return -1;
+    }
+
+    next_node = (*head)->next;
+    retval = (*head)->occurrences;
+    free(*head);
+    *head = next_node;
+    return retval;
+}
+
+// removes linked list item by its index
+int remove_by_index(node_t ** head, int n) {
+    int i = 0;
+    int retval = -1;
+    node_t * current = *head;
+    node_t * temp_node = NULL;
+
+    if (n == 0) {
+        return pop(head);
+    }
+
+    for (i = 0; i < n-1; i++) {
+        if (current->next == NULL) {
+            return -1;
+        }
+        current = current->next;
+    }
+
+    temp_node = current->next;
+    retval = temp_node->occurrences;
+    current->next = temp_node->next;
+    free(temp_node);
+
+    return retval;
+}
+
+// gets largest occurrence in linked list and prints it out
+void getLargestOccurrence(node_t ** head){
+    node_t * current = *head;
+    int cur_i = 0;
+    int max = 0;
+    int max_i = 0;
+    char *max_name;
+
+    while (current != NULL) {
+        // printf("%s has an occurrence of: %d\n", current->name, current->occurrences);
+        if(current->occurrences > max){
+            max = current->occurrences;
+            max_i = cur_i;
+            max_name = (char*) malloc(sizeof(char) * (strlen(current->name) + 1));
+
+            printf("(current name:%s)\n", current->name);
+
+            if(!max_name) {
+                printf("%s", ERROR_MESSAGE);
+                return;
+            }
+
+            max_name = current->name;
+        }
+        cur_i++;
+        current = current->next;
+    }
+
+    printf("big boi named: %s is at index: %d with occurrence of %d\n", max_name, max_i, max);
+    printf("removing big boi from linked list.....\n");
+    remove_by_index(head, max_i);
+    printf("---removal complete\n");
+}
+
+// =============================  MAIN ===============================
 int main(int argc, const char *argv[]) {
-  char *fileName;         // name of our file
-  char line[MAX_CHAR];   // line with max_char size
-  int nameIndex;          // index of "name" line field
-  
-  // Part 1 - Getting the File
-  // get the file from command line
-  // make sure file is valid/exists / correct arg numbers given
-  // check that file is CSV file
-  // make sure we have 2 command line arguments
-  if (argc != 2) {
-    return errorMsg();
-  } else {
-    fileName = (char*) malloc(sizeof(char) * strlen(argv[1]));
-    strcpy(fileName, argv[1]);
-    // if we have proper command line args, check it's csv and exists
-    if(!fileExists(fileName) || !isCSV(fileName)){
-      return errorMsg();
+    char line[MAX_CHAR];   // line with max_char size
+    int nameIndex;          // index of "name" line field
+    header_t headers[MAX_CHAR];
+    int headerIndex = 0;
+
+    // Part 1 - Getting the File
+    // get the file from command line
+    // make sure file is valid/exists / correct arg numbers given
+    // check that file is CSV file
+
+    // make sure we have 2 command line arguments
+    if (argc != 2) {
+        return errorMsg();
+    } else {
+        // if we have proper command line args, check it's csv and exists
+        if(!fileExists(argv[1]) || !isCSV(argv[1])) {
+            return errorMsg();
+        }
     }
-  }
-  
-  // printf("File Name: %s\n", fileName);
-  
-  // Part 2 - Check Valid lines
-  // check lines and make sure valid
-  // only one "name" column
-  // tolower each section???
-  // check line size does not exceed max_char
-  
-  FILE* file = fopen(fileName, "r");
-  
-  if(!file) {
-    return errorMsg();
-  }
-  
-  // check that file has content in it
-  if(!fgets(line, MAX_CHAR, file)){
-    printf("!!!!!!WE ARE IN EMPTY FILE!!!!\n");
-    return errorMsg();
-  }
-  
-  // on successful fgets, line terminated with newline
-  // if no newline, means exceeded buffer size
-  if(line[strlen(line) - 1] != '\n') {
-    printf("Overflow detection!!!!!!");
-    return errorMsg();
-  }
-  
-  // printf("%s\n", line);
-  
-  // char test[] = "lulu,sean,poo,prem";
-  // char testFAIL[] = "name, name";  // space messes things up
-  
-  nameIndex = getNameIndex(line);
-  if(nameIndex == -1) {
-    return errorMsg();
-  }
-  
-  printf("%d\n", nameIndex);
-  
-  while(fgets(line, MAX_CHAR, file)) {
-    printf("Name: %s\n", getfield(line, nameIndex));
-  }
-  
-  
-  
-  
-  // Part 3 - Get Unique Names
-  // loop through entire file to collect number of names
-  
-  // Part 4 - Create Hashtable
-  // create that shit
-  // another loop to insert the names in hashtable
-  
-  free(fileName);
-  
-  return 0;
+
+    // printf("File Name: %s\n", fileName);
+
+    // Part 2 - Check Valid Lines
+    // Open file and make sure it exists
+    // check header and make sure valid
+    // only one "name" column
+    // check line size does not exceed max_char
+
+    FILE* file = fopen(argv[1], "r");
+
+    if(!file) {
+        return errorMsg();
+    }
+
+    // check that file has content in it, otherwise error
+    if(!fgets(line, MAX_CHAR, file)){
+        printf("!!!!!!WE ARE IN EMPTY FILE!!!!\n");
+        return errorMsg();
+    }
+
+    // on successful fgets, the string is terminated with newline
+    // if no newline, means buffer size exceeded
+    if(line[strlen(line) - 1] != '\n') {
+        printf("first overflow!!!\n");
+        printf("Overflow detection!!!!!!\n");
+        return errorMsg();
+    }
+
+    // printf("156: %s\n", line);
+
+    // char test1[] = "lulu,sean,,poo,prem";
+    // char test2[] = "bea,,name";  // space messeses indexing so need strsep instead strtok
+    // char test3[] = "name,,name";
+    // char test4[] = "lulu,sean,poo,prem";
+    // char test5[] = "";
+    // char test6[] = ",";
+    // char test7[] = "name,";
+
+    trimLine(line);
+    nameIndex = getNameIndex(line, headers, &headerIndex);
+    if(nameIndex == -1) {
+        return errorMsg();
+    }
+
+    // printf("%d\n", nameIndex);
+
+    // Part 3 - Get Unique Names
+    // loop through entire file to collect number of names
+    // while(fgets(line, MAX_CHAR, file)) {
+        // printf("Name: %s\n", getField(line, nameIndex));
+    // }
+
+    // Part 4 - Create Hashtable
+    // store names in hashtable
+    // another loop to insert the names in hashtable
+    bool init = true;
+    node_t * head = NULL;
+    head = malloc(sizeof(node_t));
+    if (!head)
+        return errorMsg();
+
+    line[MAX_CHAR - 1] = '\0';     // set last char of buffer to null character
+    while(fgets(line, MAX_CHAR, file)) {
+        // must check for buffer overflow (can tell if null char got overwritten)
+        if(line[MAX_CHAR - 1] != '\0') {
+            printf("second overflow!!!!!!!\n");
+            printf("Overflow detection!!!!!!\n");
+            return errorMsg();
+        }
+        trimLine(line);
+        if(init) {
+            // printf("initialiazing the head\n");
+            init_head(head, getField(line, nameIndex));
+            init = false;
+        }else {
+            push(head, getField(line, nameIndex));
+        }
+        // printf("Name: %s\n", getField(line, nameIndex));
+    }
+
+    // print_list(head);
+
+    // gets top 10 largest or as many nodes as possible from linked list
+    for(int i = 0; i < 10 && head; ++i) {
+        getLargestOccurrence(&head);
+    }
+
+    return 0;
 }
