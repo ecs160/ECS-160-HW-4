@@ -1,1 +1,2 @@
-ECS160 HW#4
+Lulu Wang
+Sean Chen
