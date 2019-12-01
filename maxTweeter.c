@@ -116,9 +116,9 @@ char *parsedFieldOLD(char* field, char* buffer, header_t headers[], int headerCo
 
 
 // count that there are matching quotes in a given string
-bool hasMatchingQuotes(char* string) {
+bool hasMatchingQuotes(const char* string) {
     int count = 0;
-    char* cur = string;
+    const char* cur = string;
 
     printf("cur char = %d\n", *cur);
 
@@ -177,20 +177,6 @@ const int valAndGetNameIndex(char* line, header_t headers[], int *headerCount) {
     return nameIndex;
 }
 
-// checks that the number items in each line are the same as header number
-// bool lineNumEqualsHeaderNum(char* line, int headerCount) {
-//     char* copyLine = line;
-//     char* token = strsep(&copyLine, ",");
-//     int count = 0;
-//
-//     while(token) {
-//         ++count;
-//         token = strsep(&copyLine, ","); // get next token
-//     }
-//
-//     return count == headerCount;
-// }
-
 // gets specific item in given row, given the column index
 const char* getField(char* row, int col_index, int *colCount) {
     const char* nameItem = NULL;
@@ -211,19 +197,22 @@ const char* getField(char* row, int col_index, int *colCount) {
 }
 
 // ensure name Item is either quoted or not quoted based on name header
-// bool nameItemQuoteCorrect (const char* nameItem, bool isQuoted) {
-//     if(isQuoted) {
-//         if(nameItem[0] != '"' || nameItem[strlen(nameItem) - 1] != '"') {
-//             return false;
-//         }
-//     } else {    // not quoted
-//         if(nameItem[0] == '"' || nameItem[strlen(nameItem) - 1] == '"') {
-//             return false;
-//         }
-//     }
-//
-//     return true && hasMatchingQuotes(nameItem);
-// }
+bool nameItemQuoteCorrect (const char* nameItem, bool isQuoted, char* buffer) {
+    printf("in nameItemQuoteCorrect\n");
+    if(isQuoted) {
+        if(nameItem[0] != '"' || nameItem[strlen(nameItem) - 1] != '"') {
+            return false;
+        }
+        strncpy(buffer, nameItem + 1, strlen(nameItem) - 2);    // strip quotes
+    } else {    // not quoted
+        if(nameItem[0] == '"' || nameItem[strlen(nameItem) - 1] == '"') {
+            return false;
+        }
+        strcpy(buffer, nameItem);    // otherwise copy original (unquoted)
+    }
+
+    return hasMatchingQuotes(buffer);
+}
 
 // ======================= LINKED LIST FUNCTIONS =======================
 // prints out our entire linked list
@@ -260,7 +249,7 @@ void push(node_t * head, const char* name) {
         printf("%s", ERROR_MESSAGE);
         return;
     }
-    current->next->name = malloc(sizeof(char) * (strlen(name) + 1));
+    current->next->name = (char*) malloc(sizeof(char) * (strlen(name) + 1));
     if(!current->next->name) {
         printf("%s", ERROR_MESSAGE);
         return;
@@ -374,8 +363,9 @@ int main(int argc, const char *argv[]) {
     int headerCount = 0;    // total header items
     int fileLineCount = 0;  // total lines in file
     bool init = true;
-    node_t * head = NULL;
+    node_t* head = NULL;
     int colCount = 0;
+    char buffer[MAX_CHAR];
 
     // Part 1 - Getting the File
     // get the file from command line
@@ -491,30 +481,36 @@ int main(int argc, const char *argv[]) {
             // then check that the token has quotes on start and end
             // then check for internal matching quotes
             // printf("initialiazing the head\n");
-
-
-            // if(!nameItemQuoteCorrect(curNameItem, headers[nameIndex].isQuoted)) {
-            //     printf("name item inconsistent with header quote style\n");
-            //     return errorMsg();
-            // }
-
-            init_head(head, getField(line, nameIndex, &colCount));
-            printf("after init head\n");
-            if(colCount != headerCount) {
-                printf("inconsistent header: %d and column counts: %d\n", headerCount, colCount);
-                return errorMsg();
+            const char* curNameItem = getField(line, nameIndex, &colCount);
+            if(curNameItem) {
+                if(!nameItemQuoteCorrect(curNameItem, headers[nameIndex].isQuoted, buffer)) {
+                    printf("name item inconsistent with header quote style\n");
+                    return errorMsg();
+                }
+                printf("before init_head\n");
+                init_head(head, buffer);
+                printf("after init head\n");
+                if(colCount != headerCount) {
+                    printf("inconsistent header: %d and column counts: %d\n", headerCount, colCount);
+                    return errorMsg();
+                }
+                init = false;
             }
-            init = false;
         }else {
-            // const char* curNameItem = getField(line, nameIndex);
-            // if(!nameItemQuoteCorrect(curNameItem, headers[nameIndex].isQuoted)) {
-            //     printf("name item inconsistent with header quote style\n");
-            //     return errorMsg();
-            // }
-            push(head, getField(line, nameIndex, &colCount));
-            if(colCount != headerCount) {
-                printf("inconsistent header and column counts\n");
-                return errorMsg();
+            const char* curNameItem = getField(line, nameIndex, &colCount);
+            if(curNameItem) {
+                if(!nameItemQuoteCorrect(curNameItem, headers[nameIndex].isQuoted, buffer)) {
+                    printf("name item inconsistent with header quote style\n");
+                    return errorMsg();
+                }
+                printf("bfore push\n");
+                printf("curNameItem:%s\n",curNameItem);
+                push(head, buffer);
+                printf("after push\n");
+                if(colCount != headerCount) {
+                    printf("inconsistent header and column counts\n");
+                    return errorMsg();
+                }
             }
         }
         // printf("Name: %s\n", getField(line, nameIndex));
