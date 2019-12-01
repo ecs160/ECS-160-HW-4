@@ -226,8 +226,28 @@ void print_list(node_t * head) {
 }
 
 // push a new linked list node in current linked list
-void push(node_t * head, const char* name) {
-    node_t * current = head;
+void push(node_t** head, const char* name) {
+    if(*head == NULL) {
+        *head = malloc(sizeof(node_t));
+        if(*head == NULL){
+            printf("%s", ERROR_MESSAGE);
+            return;
+        }
+
+        (*head)->occurrences = 1;
+        (*head)->name = (char*) malloc(sizeof(char) * (strlen(name) + 1));
+        strcpy((*head)->name, name);
+
+        if((*head)->name == NULL){
+            printf("%s", ERROR_MESSAGE);
+            return;
+        }
+        (*head)->next = NULL;
+
+        return;
+    }
+
+    node_t* current = *head;
     while (current != NULL) {
         //if name exists already
         // printf("cur name: %s | compared to name: %s\n", current->name, name);
@@ -258,25 +278,6 @@ void push(node_t * head, const char* name) {
     strcpy(current->next->name, name);
     current->next->occurrences = 1;
     current->next->next = NULL;
-}
-
-// used to initialize linked list head
-void init_head(node_t* head, const char* name){
-    // node_t * current = head;
-    if(name == NULL) {
-        return;
-    }
-
-    printf("in init head function\n");
-    head->name = (char*) malloc(sizeof(char) * (strlen(name) + 1));
-    if(!head->name) {
-        printf("%s", ERROR_MESSAGE);
-        return;
-    }
-
-    strcpy(head->name, name);
-    head->occurrences = 1;
-    head->next = NULL;
 }
 
 // removes the head of linked list
@@ -443,14 +444,6 @@ int main(int argc, const char *argv[]) {
         // printf("Name: %s\n", getField(line, nameIndex));
     // }
 
-    // Part 4 - Create Hashtable
-    // store names in hashtable
-    // another loop to insert the names in hashtable
-    head = malloc(sizeof(node_t));
-    if (!head) {
-        return errorMsg();
-    }
-
     line[MAX_CHAR - 1] = '\0';     // set last char of buffer to null character
 
     // TODO: need to check each nameIndex item is quoted or not
@@ -459,6 +452,14 @@ int main(int argc, const char *argv[]) {
         printf("valid header but no content\n");
         return 0;
     }
+
+    // Part 4 - Create Hashtable
+    // store names in hashtable
+    // another loop to insert the names in hashtable
+    // head = malloc(sizeof(node_t));
+    // if (!head) {
+    //     return errorMsg();
+    // }
 
     // use do while loop because already have a fgets above
     do {
@@ -474,43 +475,19 @@ int main(int argc, const char *argv[]) {
             return errorMsg();
         }
         trimLine(line);
-
-        if(init) {
-            // call getField to get the token
-            // check if(we want quotes)
-            // then check that the token has quotes on start and end
-            // then check for internal matching quotes
-            // printf("initialiazing the head\n");
-            const char* curNameItem = getField(line, nameIndex, &colCount);
-            if(curNameItem) {
-                if(!nameItemQuoteCorrect(curNameItem, headers[nameIndex].isQuoted, buffer)) {
-                    printf("name item inconsistent with header quote style\n");
-                    return errorMsg();
-                }
-                printf("before init_head\n");
-                init_head(head, buffer);
-                printf("after init head\n");
-                if(colCount != headerCount) {
-                    printf("inconsistent header: %d and column counts: %d\n", headerCount, colCount);
-                    return errorMsg();
-                }
-                init = false;
+        const char* curNameItem = getField(line, nameIndex, &colCount);
+        if(curNameItem) {
+            if(!nameItemQuoteCorrect(curNameItem, headers[nameIndex].isQuoted, buffer)) {
+                printf("name item inconsistent with header quote style\n");
+                return errorMsg();
             }
-        }else {
-            const char* curNameItem = getField(line, nameIndex, &colCount);
-            if(curNameItem) {
-                if(!nameItemQuoteCorrect(curNameItem, headers[nameIndex].isQuoted, buffer)) {
-                    printf("name item inconsistent with header quote style\n");
-                    return errorMsg();
-                }
-                printf("bfore push\n");
-                printf("curNameItem:%s\n",curNameItem);
-                push(head, buffer);
-                printf("after push\n");
-                if(colCount != headerCount) {
-                    printf("inconsistent header and column counts\n");
-                    return errorMsg();
-                }
+            printf("bfore push\n");
+            printf("curNameItem:%s\n",curNameItem);
+            push(&head, buffer);
+            printf("after push\n");
+            if(colCount != headerCount) {
+                printf("inconsistent header and column counts\n");
+                return errorMsg();
             }
         }
         // printf("Name: %s\n", getField(line, nameIndex));
@@ -525,5 +502,6 @@ int main(int argc, const char *argv[]) {
     printf("Headr count:%d\n", headerCount);
     // printf("HAS MATCHING QUOTES: %d\n", hasMatchingQuotes("a\"b"));
 
+    // TODO: FREE EVERYTHING ALLOCATED
     return 0;
 }
