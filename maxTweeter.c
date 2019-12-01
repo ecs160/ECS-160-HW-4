@@ -167,7 +167,7 @@ const int valAndGetNameIndex(char* line, header_t headers[], int *headerCount) {
             return -1;
         }
          // if we're here means there were no duplicates of any found and name just showed up
-        if(strcmp(token, "name") == 0){
+        if(strcmp(buffer, "name") == 0){
             nameIndex = *headerCount - 1;   // -1 since 0 based
         }
         token = strsep(&line, ","); // get next token
