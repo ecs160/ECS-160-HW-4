@@ -67,23 +67,41 @@ int findStringPos(header_t headers[], int headerCount, char *input) {
 }
 
 // adds an input to end of a array (used for checking duplicates in header)
-int addHeader(header_t headers[], int *headerCount, char *input) {
+int addHeader(header_t headers[], int *headerCount, char *input, bool isQuoted) {
     // strlen + 1 to account for null terminator
     headers[*headerCount].headerName = (char*) malloc(sizeof(char) * (strlen(input) + 1));
-
+    headers[*headerCount].isQuoted = isQuoted;
     strcpy(headers[*headerCount].headerName, input);
+
     *headerCount += 1;
 
     return *headerCount;
 }
 
 // parses a field to get rid of outside quotes if any
-char *parsedField(char* field, char* buffer, header_t headers[], int headerCount) {
+char *trimQuotes(char* field, char* buffer, bool* isQuoted) {
+    if(field[0] == '"') {
+        if(field[strlen(field) - 1] == '"') {
+            strncpy(buffer, field + 1, strlen(field) - 2);
+            *isQuoted = true;
+            return buffer;
+        } else {
+            return NULL;       // invalid quotes
+        }
+    }
+    strcpy(buffer, field);
+    *isQuoted = false;
+
+    return buffer;
+}
+
+// parses a field to get rid of outside quotes if any
+char *parsedFieldOLD(char* field, char* buffer, header_t headers[], int headerCount) {
     if(field[0] == '"') {
         if(field[strlen(field) - 1] == '"') {
             strncpy(buffer, field + 1, strlen(field) - 2);
             // POSSIBLE DELETE IF STATMENT OUT IF NOT CHECKING OTHER COLUMNS
-            if((strlen(field) - 2) > 0) {
+            if(strlen(field) - 2 > 0) {
                 headers[headerCount].isQuoted = true;
             }
             return buffer;
@@ -96,65 +114,56 @@ char *parsedField(char* field, char* buffer, header_t headers[], int headerCount
     return buffer;
 }
 
-// checks that all header items have uniform quote type
-bool hasUniformQuotes(header_t headers[], int headerCount) {
-    const bool firstItem = headers[0].isQuoted;
-
-    for (int i = 1; i < headerCount; i++)  {
-        if (headers[i].isQuoted != firstItem) {
-            return false;
-        }
-    }
-    return true;
-}
 
 // count that there are matching quotes in a given string
 bool hasMatchingQuotes(char* string) {
-    int front = 0;
-    int end = strlen(string) - 1;
-    int frontQuoteCount = 0;
-    int backQuoteCount = 0;
+    int count = 0;
+    char* cur = string;
 
-    while(front <= end) {
-         printf("stringfront: %c\n", string[front]);
-        if(string[front] == '"') {
-            frontQuoteCount++;
+    printf("cur char = %d\n", *cur);
+
+    while(*cur) {
+        if(*cur == '"') {
+            count++;
         }
-        front++;
-        printf("stringend: %c\n", string[end]);
-        if(string[end] == '"') {
-            backQuoteCount++;
-        }
-        --end;
+        cur++;
     }
-    return frontQuoteCount == backQuoteCount;
+
+    return (count % 2) == 0;
 }
 
 // validate header (checks no duplicates items/valid quotes) and get index of "name"
 const int valAndGetNameIndex(char* line, header_t headers[], int *headerCount) {
     int nameIndex = -1;     // use -1 to denote that name has not been found
     char buffer[MAX_CHAR];
+    bool isQuoted = false;
 
     char* token = strsep(&line, ",");
     while(token) {
         printf("TOKEN:[%s]\n", token);
          // parse a string to remove outer quotes if any
-        char *noQuotes = parsedField(token, buffer, headers, *headerCount);
+        char *noQuotes = trimQuotes(token, buffer, &isQuoted);
+        printf("trim quote:%s\n", buffer);
         if(noQuotes == NULL) {
             printf("invalid quote parse\n");
             return -1;   // null if invalid quote parse
         }
+        printf("after no QUOTES\n");
         // also check that after removing outer quotes, other quotes inside valid
-        if(!hasMatchingQuotes(noQuotes)) {
+        if(!hasMatchingQuotes(buffer)) {
+            printf("quote mismatch!\n");
             return -1;
         }
+        printf("afeter has matching quotes\n");
         // find position of token in headers array
-        int pos = findStringPos(headers, *headerCount, token);
+        int pos = findStringPos(headers, *headerCount, buffer);
+        printf("find string pos: %d\n", pos);
         // create array of headers
         if(pos == -1) {     // did not find the token so add it to headers[headerCount]
-            addHeader(headers, headerCount, token);
+            addHeader(headers, headerCount, buffer, isQuoted);
+            printf("added header\n");
         } else {
-            printf("findStringDup token:[%s]\n", token);    // otherwise we found a duplicate item
+            printf("found duplicate token:[%s]\n", buffer);    // otherwise we found a duplicate item
             return -1;
         }
          // if we're here means there were no duplicates of any found and name just showed up
@@ -164,31 +173,57 @@ const int valAndGetNameIndex(char* line, header_t headers[], int *headerCount) {
         token = strsep(&line, ","); // get next token
     }
 
-    // now we need to check if all headers are quoted or unquoted
-    if(!hasUniformQuotes(headers, *headerCount)) {
-        printf("no uniform quotes!\n");
-        return -1;      // mismatch
-    }
-
     printf("name ind: %d\n", nameIndex);
     return nameIndex;
 }
 
-// gets specific item in given row, given the column index
-const char* getField(char* row, int col_index) {
-    const char* token = strsep(&row, ",");
+// checks that the number items in each line are the same as header number
+// bool lineNumEqualsHeaderNum(char* line, int headerCount) {
+//     char* copyLine = line;
+//     char* token = strsep(&copyLine, ",");
+//     int count = 0;
+//
+//     while(token) {
+//         ++count;
+//         token = strsep(&copyLine, ","); // get next token
+//     }
+//
+//     return count == headerCount;
+// }
 
-    while(col_index != 0 || (token && *token)) {
+// gets specific item in given row, given the column index
+const char* getField(char* row, int col_index, int *colCount) {
+    const char* nameItem = NULL;
+    *colCount = 0;
+
+    const char* token = strsep(&row, ",");
+    while(token) {
         if (!col_index) {    // we found the correct column if index == 0
             // printf("reading in %s\n", token);
-            return token;
+            nameItem = token;
         }
         // keep going/decrement since we aren't in correct column
         col_index--;
         token = strsep(&row, ",");  // get next token
+        *colCount += 1;
     }
-    return NULL;
+    return nameItem;
 }
+
+// ensure name Item is either quoted or not quoted based on name header
+// bool nameItemQuoteCorrect (const char* nameItem, bool isQuoted) {
+//     if(isQuoted) {
+//         if(nameItem[0] != '"' || nameItem[strlen(nameItem) - 1] != '"') {
+//             return false;
+//         }
+//     } else {    // not quoted
+//         if(nameItem[0] == '"' || nameItem[strlen(nameItem) - 1] == '"') {
+//             return false;
+//         }
+//     }
+//
+//     return true && hasMatchingQuotes(nameItem);
+// }
 
 // ======================= LINKED LIST FUNCTIONS =======================
 // prints out our entire linked list
@@ -237,9 +272,14 @@ void push(node_t * head, const char* name) {
 }
 
 // used to initialize linked list head
-void init_head(node_t * head, const char* name){
+void init_head(node_t* head, const char* name){
     // node_t * current = head;
-    head->name = malloc(sizeof(char) * (strlen(name) + 1));
+    if(name == NULL) {
+        return;
+    }
+
+    printf("in init head function\n");
+    head->name = (char*) malloc(sizeof(char) * (strlen(name) + 1));
     if(!head->name) {
         printf("%s", ERROR_MESSAGE);
         return;
@@ -333,9 +373,9 @@ int main(int argc, const char *argv[]) {
     header_t headers[MAX_CHAR]; // holds the header type (name and if quoted)
     int headerCount = 0;    // total header items
     int fileLineCount = 0;  // total lines in file
-    bool isQuote = false;
     bool init = true;
     node_t * head = NULL;
+    int colCount = 0;
 
     // Part 1 - Getting the File
     // get the file from command line
@@ -405,10 +445,6 @@ int main(int argc, const char *argv[]) {
         return errorMsg();
     }
 
-    // if we're here means everything is validated and uniform header hasUniformQuotes
-    // just set this var as first item in headers if quoted
-    isQuote = headers[0].isQuoted;
-
     // printf("%d\n", nameIndex);
 
     // Part 3 - Get Unique Names
@@ -421,39 +457,24 @@ int main(int argc, const char *argv[]) {
     // store names in hashtable
     // another loop to insert the names in hashtable
     head = malloc(sizeof(node_t));
-    if (!head)
+    if (!head) {
         return errorMsg();
+    }
 
     line[MAX_CHAR - 1] = '\0';     // set last char of buffer to null character
-
-
 
     // TODO: need to check each nameIndex item is quoted or not
     // check if valid header but no content (considered valid)
     if(!fgets(line, MAX_CHAR, file)) {
         printf("valid header but no content\n");
         return 0;
-    } else {    // do this once since fgets already got a line. it will be overwritten if called again
-        // must check for buffer overflow (can tell if null char got overwritten)
-        fileLineCount++;
-        if(line[MAX_CHAR - 1] != '\0') {
-            printf("second overflow!!!!!!!\n");
-            printf("Overflow detection!!!!!!\n");
-            return errorMsg();
-        }
-        trimLine(line);
-        if(init) {
-            // printf("initialiazing the head\n");
-            init_head(head, getField(line, nameIndex));
-            init = false;
-        }else {
-            push(head, getField(line, nameIndex));
-        }
     }
 
-    while(fgets(line, MAX_CHAR, file)) {
+    // use do while loop because already have a fgets above
+    do {
         fileLineCount++;
         if(fileLineCount > MAX_LINES) {  // make filed doesn't exceed MAX_LINES
+            printf("FILE EXCEEDED MAX LINES\n");
             return errorMsg();
         }
         // must check for buffer overflow (can tell if null char got overwritten)
@@ -463,15 +484,41 @@ int main(int argc, const char *argv[]) {
             return errorMsg();
         }
         trimLine(line);
+
         if(init) {
+            // call getField to get the token
+            // check if(we want quotes)
+            // then check that the token has quotes on start and end
+            // then check for internal matching quotes
             // printf("initialiazing the head\n");
-            init_head(head, getField(line, nameIndex));
+
+
+            // if(!nameItemQuoteCorrect(curNameItem, headers[nameIndex].isQuoted)) {
+            //     printf("name item inconsistent with header quote style\n");
+            //     return errorMsg();
+            // }
+
+            init_head(head, getField(line, nameIndex, &colCount));
+            printf("after init head\n");
+            if(colCount != headerCount) {
+                printf("inconsistent header: %d and column counts: %d\n", headerCount, colCount);
+                return errorMsg();
+            }
             init = false;
         }else {
-            push(head, getField(line, nameIndex));
+            // const char* curNameItem = getField(line, nameIndex);
+            // if(!nameItemQuoteCorrect(curNameItem, headers[nameIndex].isQuoted)) {
+            //     printf("name item inconsistent with header quote style\n");
+            //     return errorMsg();
+            // }
+            push(head, getField(line, nameIndex, &colCount));
+            if(colCount != headerCount) {
+                printf("inconsistent header and column counts\n");
+                return errorMsg();
+            }
         }
         // printf("Name: %s\n", getField(line, nameIndex));
-    }
+    } while(fgets(line, MAX_CHAR, file));
 
     // gets top 10 largest or as many nodes as possible from linked list
     for(int i = 0; i < 10 && head; ++i) {
@@ -479,6 +526,8 @@ int main(int argc, const char *argv[]) {
     }
 
     printf("linecount total:%d\n",fileLineCount);
+    printf("Headr count:%d\n", headerCount);
+    // printf("HAS MATCHING QUOTES: %d\n", hasMatchingQuotes("a\"b"));
 
     return 0;
 }
