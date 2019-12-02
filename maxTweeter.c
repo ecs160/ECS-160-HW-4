@@ -1,3 +1,6 @@
+// ECS 160 - HW 4
+// Sean Chen - 913794982
+// Lulu Wang - 914008509
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
