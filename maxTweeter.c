@@ -23,8 +23,7 @@ typedef struct header{
 
 
 // ====================== FUNCTIONS ======================
-// prints out invalid input error message
-int errorMsg() {
+int errorMsg() {    // prints out invalid input error message
     printf("%s", ERROR_MESSAGE);
     return -1;
 }
@@ -97,8 +96,8 @@ char *trimQuotes(char* field, char* buffer, bool* isQuoted) {
 
 // count that there are matching quotes in a given string
 bool hasMatchingQuotes(const char* string) {
-    int count = 0;
     const char* cur = string;
+    int count = 0;
 
     printf("cur char = %d\n", *cur);
 
@@ -196,8 +195,8 @@ bool nameItemQuoteCorrect (const char* nameItem, bool isQuoted, char* buffer) {
 
 // ======================= LINKED LIST FUNCTIONS =======================
 // prints out our entire linked list
-void print_list(node_t * head) {
-    node_t * current = head;
+void print_list(node_t* head) {
+    node_t* current = head;
 
     while (current != NULL) {
         printf("%s has an occurrence of: %d\n", current->name, current->occurrences);
@@ -209,7 +208,7 @@ void print_list(node_t * head) {
 void push(node_t** head, const char* name) {
     if(*head == NULL) {
         *head = malloc(sizeof(node_t));
-        if(*head == NULL){
+        if(*head == NULL) {
             printf("%s", ERROR_MESSAGE);
             return;
         }
@@ -218,7 +217,7 @@ void push(node_t** head, const char* name) {
         (*head)->name = (char*) malloc(sizeof(char) * (strlen(name) + 1));
         strcpy((*head)->name, name);
 
-        if((*head)->name == NULL){
+        if((*head)->name == NULL) {
             printf("%s", ERROR_MESSAGE);
             return;
         }
@@ -231,7 +230,7 @@ void push(node_t** head, const char* name) {
     while (current != NULL) {
         //if name exists already
         // printf("cur name: %s | compared to name: %s\n", current->name, name);
-        if(strcmp(current->name, name) == 0){
+        if(strcmp(current->name, name) == 0) {
             //increment the number of occurrences
             // printf("match: %d!\n", current->occurrences + 1);
             current->occurrences = current->occurrences + 1;
@@ -303,16 +302,16 @@ int remove_by_index(node_t ** head, int n) {
 }
 
 // gets largest occurrence in linked list and prints it out
-void getLargestOccurrence(node_t ** head){
-    node_t * current = *head;
+void getLargestOccurrence(node_t ** head) {
+    node_t* current = *head;
     int cur_i = 0;
     int max = 0;
     int max_i = 0;
-    char *max_name;
+    char* max_name;
 
     while (current != NULL) {
         // printf("%s has an occurrence of: %d\n", current->name, current->occurrences);
-        if(current->occurrences > max){
+        if(current->occurrences > max) {
             max = current->occurrences;
             max_i = cur_i;
             max_name = (char*) malloc(sizeof(char) * (strlen(current->name) + 1));
@@ -332,21 +331,40 @@ void getLargestOccurrence(node_t ** head){
 
     printf("big boi named: %s is at index: %d with occurrence of %d\n", max_name, max_i, max);
     printf("removing big boi from linked list.....\n");
+    free(max_name);
     remove_by_index(head, max_i);
     printf("---removal complete\n");
 }
 
-// =============================  MAIN ===============================
+// ========================== FREEING FUNCTIONS ==========================
+// frees the linked list nodes
+void freeLinkedList(node_t* head) {
+   node_t* tmp;
+   while (head != NULL) {
+       tmp = head;
+       head = head->next;
+       free(tmp->name);
+       free(tmp);
+    }
+}
+
+// frees header names
+void freeHeader(header_t headers[], int headerCount) {
+    for(int i = 0; i < headerCount; ++i) {
+        free(headers[i].headerName);
+    }
+}
+
+// =============================  MAIN ====================================
 int main(int argc, const char *argv[]) {
-    char line[MAX_CHAR];   // line with max_char size
+    char line[MAX_CHAR];    // line with max_char size
     int nameIndex;          // index of "name" line field
     header_t headers[MAX_CHAR]; // holds the header type (name and if quoted)
     int headerCount = 0;    // total header items
     int fileLineCount = 0;  // total lines in file
-    bool init = true;
-    node_t* head = NULL;
-    int colCount = 0;
-    char buffer[MAX_CHAR];
+    node_t* head = NULL;    // head of linked list
+    int colCount = 0;       // used to see how many columns after we get a line
+    char buffer[MAX_CHAR];  // used to store field after taking away quotes
 
     // Part 1 - Getting the File
     // get the file from command line
@@ -393,23 +411,12 @@ int main(int argc, const char *argv[]) {
         return errorMsg();
     }
 
-    // printf("156: %s\n", line);
-
-    // char test1[] = "lulu,sean,,poo,prem";
-    // char test2[] = "bea,,name";  // space messeses indexing so need strsep instead strtok
-    // char test3[] = "name,,name";
-    // char test4[] = "lulu,sean,poo,prem";
-    // char test5[] = "";
-    // char test6[] = ",";
-    // char test7[] = "name,";
-
     // for safety, intialize members in headers struct
     for(int i = 0; i < MAX_CHAR; ++i) {
         headers[i].headerName = NULL;
         headers[i].isQuoted = false;
     }
 
-    //
     trimLine(line);
     nameIndex = valAndGetNameIndex(line, headers, &headerCount);
     if(nameIndex == -1) {
@@ -436,10 +443,6 @@ int main(int argc, const char *argv[]) {
     // Part 4 - Create Hashtable
     // store names in hashtable
     // another loop to insert the names in hashtable
-    // head = malloc(sizeof(node_t));
-    // if (!head) {
-    //     return errorMsg();
-    // }
 
     // use do while loop because already have a fgets above
     do {
@@ -482,6 +485,9 @@ int main(int argc, const char *argv[]) {
     printf("Headr count:%d\n", headerCount);
     // printf("HAS MATCHING QUOTES: %d\n", hasMatchingQuotes("a\"b"));
 
-    // TODO: FREE EVERYTHING ALLOCATED
+    // TODO: FREE EVERYTHING ALLOCATED (headers and linkedlist nodes)
+    freeHeader(headers, headerCount);
+    freeLinkedList(head);
+
     return 0;
 }
