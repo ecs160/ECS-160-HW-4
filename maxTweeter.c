@@ -95,26 +95,6 @@ char *trimQuotes(char* field, char* buffer, bool* isQuoted) {
     return buffer;
 }
 
-// parses a field to get rid of outside quotes if any
-char *parsedFieldOLD(char* field, char* buffer, header_t headers[], int headerCount) {
-    if(field[0] == '"') {
-        if(field[strlen(field) - 1] == '"') {
-            strncpy(buffer, field + 1, strlen(field) - 2);
-            // POSSIBLE DELETE IF STATMENT OUT IF NOT CHECKING OTHER COLUMNS
-            if(strlen(field) - 2 > 0) {
-                headers[headerCount].isQuoted = true;
-            }
-            return buffer;
-        } else {
-            return NULL;       // invalid quotes
-        }
-    }
-    strcpy(buffer, field);
-    headers[headerCount].isQuoted = false;
-    return buffer;
-}
-
-
 // count that there are matching quotes in a given string
 bool hasMatchingQuotes(const char* string) {
     int count = 0;
